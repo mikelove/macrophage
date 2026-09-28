@@ -27,10 +27,25 @@ human reference transcripts v29, with a
 script that can be seen in `inst/scripts/Snakemake` and with 
 log output in `inst/scripts/snakemake.log`. 
 
-The quantification output is in the `inst/extdata/quant`
+The quantification output is in the `inst/extdata/quants`
 directory. The `quant.sf` files have been gzipped to preserve space,
-so they are stored as `quant.sf.gz`. There are 20 Gibbs inferential
-replicates for each sample.
+so they are stored as `quant.sf.gz`. Salmon was run with 20 Gibbs
+inferential replicates for each sample. To reduce the size of the
+package, the inferential replicates (`aux_info/bootstrap`) and the
+`aux_info/ambig_info.tsv` files are no longer included in
+`inst/extdata/quants` (as of version 1.29.1). The full Salmon output,
+including the inferential replicates, is archived on Zenodo:
+[doi: 10.5281/zenodo.22982581](https://doi.org/10.5281/zenodo.22982581).
+The inferential replicates for a subset of genes are provided in the
+`macro_txp_se` object (see below).
+
+The file `inst/extdata/gencode.v29.annotation.slim.gtf.gz` is a
+reduced version of the Gencode v29 GTF file, containing only the
+`gene` and `transcript` features, with a subset of the attributes
+(`gene_id`, `transcript_id`, `gene_type`, `gene_name`,
+`transcript_type`, `transcript_name`). It can be used to build
+transcript and gene ranges, but not exon ranges. It was created with
+the script `inst/scripts/makeSlimGTF.sh`.
 
 # Sample information
 
@@ -50,6 +65,14 @@ coldata
 The package also contains a summarized experiment object created
 using the script in `inst/scripts/gse_create.R`. This object can be
 loaded with `data("gse")`.
+
+Additionally, the package contains a transcript-level
+*SummarizedExperiment*, `macro_txp_se`, including the 20 inferential
+replicates, for all transcripts of a random subset of 2000 expressed
+genes plus the GBP gene family, and a transcript-to-gene table,
+`macro_tx2gene`. These were created with the script in
+`inst/scripts/makeSumExp.R` and are used in the *fishpond* vignette.
+See `?macro_txp_se` and `?macro_tx2gene` for details.
 
 # Acknowledgments 
 

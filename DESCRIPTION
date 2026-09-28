@@ -1,6 +1,6 @@
 Package: macrophage
 Title: Human macrophage immune response
-Version: 1.29.0
+Version: 1.29.1
 Author: Michael Love
 Maintainer: Michael Love <michaelisaiahlove@gmail.com>
 Description: This package provides the output of running Salmon
@@ -12,6 +12,8 @@ Description: This package provides the output of running Salmon
 biocViews: ExperimentData, SequencingData, RNASeqData
 License: GPL (>= 2)
 Depends: R (>= 3.5.0)
-Suggests: knitr, markdown
+Suggests: knitr, markdown, SummarizedExperiment, S4Vectors
 VignetteBuilder: knitr
 NeedsCompilation: no
+Encoding: UTF-8
+Config/roxygen2/version: 8.1.0

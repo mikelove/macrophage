@@ -14,60 +14,39 @@ Bioconductor ExperimentData package `macrophage`: Salmon 0.12.0 quantifications
   inferential replicates. It has been released on Zenodo; point users there for
   the full inf reps.
 
-## Current goal: get the source tarball under 100 MB
+## Size reduction (done in 1.29.1, uncommitted as of 2026-09-28)
 
-Most of the size is the Gibbs inferential replicates:
+Goal: source tarball under 100 MB. Result: 94.8 MB, `R CMD check` OK.
 
-| Path | Size |
-|---|---|
-| `inst/extdata/quants/*/aux_info/bootstrap/` | ~15 MB × 24 samples ≈ 360 MB |
-| `inst/extdata/quants/*/quant.sf.gz` | ~2.7 MB × 24 ≈ 66 MB |
-| `inst/extdata/gencode.v29.annotation.gtf.gz` | 38 MB |
-| `data/gse.rda` | 8.5 MB |
-
-The plan is to delete the `bootstrap/` directories. That breaks the fishpond
-`swish` vignette, which reads the inf reps with `tximeta()` from this package's
-`extdata`. So **before** removing anything:
-
-1. Write `inst/scripts/makeSumExp.R`. It builds a transcript-level
-   `SummarizedExperiment` **with** inf reps (`infRep1`..`infRep20`) from the
-   current `quants/`, using the same import steps as the fishpond vignette
-   (`../fishpond/fishpond/vignettes/swish.Rmd`):
-   - `coldata <- read.csv(file.path(dir, "coldata.csv"))[, c(1,2,3,5)]`,
-     renamed to `names, id, line, condition`, plus
-     `files = file.path(dir, "quants", names, "quant.sf.gz")`.
-   - Register the linkedTxome with `makeLinkedTxome()` pointing at the local
-     GTF (source `"myGENCODE"`, as in the vignette's hidden chunk), then call
-     `tximeta(coldata)`, then set `metadata(se)$txomeInfo$source <- "GENCODE"`.
-   - Load all 24 samples. The vignette uses the naive/IFNg subset for the
-     two-group analysis and all four conditions for the interaction analysis.
-   - Keep only transcripts on the chromosomes the vignette uses (chr1 and chr4)
-     to keep the object small. Keep the `rowRanges`, `mcols` (`gene_id`,
-     `tx_id`, ...), and `metadata` that `summarizeToGene`, `addIds`, and
-     `isoformProportions` need.
-   - Save with `save(..., compress="xz")` into `data/`. Pick the object name
-     now: the fishpond vignette will call `data(<name>, package="macrophage")`.
-2. Document the new dataset in `man/<name>.Rd`, following `man/gse.Rd`. Say
-   which chromosomes and samples it contains, that the assays include 20 Gibbs
-   inf reps, and that `inst/scripts/makeSumExp.R` builds it.
-3. Check that the swish vignette's steps run on the saved object (subsetting,
-   `scaleInfReps`, `labelKeep`, `swish`, `summarizeToGene`, `addIds`,
-   `isoformProportions`, `computeInfRV`). Only then remove the
-   `aux_info/bootstrap/` directories. Mention the Zenodo release (DOI) in
-   the vignette and `.Rd` as the place to get the full inf reps.
-4. Update the fishpond vignette (a separate repo) to load the object instead of
-   calling `tximeta()`.
-5. Rebuild and check the tarball size: `R CMD build .`, then `ls -lh macrophage_*.tar.gz`.
+- `git rm`'d: `inst/extdata/quants/*/aux_info/bootstrap/` (Gibbs inf reps,
+  ~393 MB), `aux_info/ambig_info.tsv.gz` (7.9 MB), and the full
+  `gencode.v29.annotation.gtf.gz` (38 MB). All are in the Zenodo archive.
+- Added `inst/extdata/gencode.v29.annotation.slim.gtf.gz` (5.1 MB; gene and
+  transcript lines only, 6 attributes), made by `inst/scripts/makeSlimGTF.sh`.
+  The distinct filename is deliberate: tximeta caches TxDbs in BiocFileCache
+  keyed on the GTF basename, so a slim file under the canonical name could
+  collide with a user's full Gencode v29 TxDb.
+- Added `data/macro_txp_se.rda` (11 MB) and `data/macro_tx2gene.rda`
+  (0.9 MB), built by `inst/scripts/makeSumExp.R`. `macro_txp_se` holds all
+  transcripts of 2000 random expressed genes plus GBP1-GBP7, with 20 inf reps,
+  and `counts`/`infRep` rounded to 1 decimal. The script needs a macrophage
+  install that still has the bootstraps (<= 1.29.0, or the `with-inf-reps`
+  branch).
+- Docs for the new datasets are roxygen2 blocks in `R/data.R`. Regenerate with
+  `roxygen2::roxygenise(roclets="rd")`: only the Rd roclet, because
+  `NAMESPACE` and `man/gse.Rd` are hand-written.
+- The fishpond swish vignette (`~/bioc/fishpond/github/fishpond`, devel) now
+  uses `data(macro_txp_se)` and
+  `summarizeToGene(se, skipRanges=TRUE, tx2gene=macro_tx2gene)`, and needs
+  macrophage (>= 1.29.1). Push macrophage to Bioconductor before fishpond.
+- Size budget: ~3.4 KB per transcript in `macro_txp_se` unrounded, ~1 KB
+  rounded. Measure with `R CMD build` before adding anything.
 
 ## Gotchas
 
-- `summarizeToGene()` looks up the TxDb through the linkedTxome/BiocFileCache,
-  so it may still need the GTF (or internet access) when the vignette runs.
-  Confirm this before assuming the GTF can be dropped. If the GTF is dropped,
-  the bioc build machines will need another route.
-- Without the inf reps, the tarball is still roughly 66 + 38 + 8.5 MB plus the
-  new `.rda`. The `.gz` files barely compress further, so the result may be
-  close to the 100 MB limit. Measure it; don't assume.
+- Downstream code that used the full GTF path (e.g. the tidyomics
+  fluent-genomics tutorial's `makeLinkedTxome(gtf=...)`) must switch to the
+  slim filename. The slim file has no exons, so `addExons()` won't work.
 - `inst/scripts/gse_create.R` builds the existing gene-level `gse` (with
   `dropInfReps=TRUE`). Leave it and `data/gse.rda` alone; other packages and
   vignettes use them.
